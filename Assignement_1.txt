@@ -1,0 +1,698 @@
+
+
+Enrollment_Number:-202300819010025
+Hadoop Assignement1
+
+
+
+
+
+QUE:-1
+Develop a MapReduce job that will split each line of the input text file in to tokens and then count the occurrences of each unique token. The input text file should be available on the HDFS.
+
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+import java.util.StringTokenizer;
+
+public class WordCountLongWritable {
+
+    public static class TokenizerMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+        IntWritable one = new IntWritable(1);
+        Text word = new Text();
+
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            StringTokenizer itr = new StringTokenizer(value.toString());
+            while (itr.hasMoreTokens()) {
+                word.set(itr.nextToken());
+                context.write(word, one);
+            }
+        }
+    }
+
+    public static class IntSumReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+        IntWritable result = new IntWritable();
+
+        public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+            int sum = 0;
+            for (IntWritable val : values) {
+                sum += val.get();
+            }
+            result.set(sum);
+            context.write(key, result);
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "word count long writable");
+        job.setJarByClass(WordCountLongWritable.class);
+        job.setMapperClass(TokenizerMapper.class);
+        job.setCombinerClass(IntSumReducer.class);
+        job.setReducerClass(IntSumReducer.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(IntWritable.class);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
+
+
+QUE:-2
+Develop a MapReduce job that will analyze the minimum temperature for each year. The input text file should be available on HDFS
+
+
+
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+
+public class MinTemperature {
+
+    public static class TempMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+        Text year = new Text();
+        IntWritable temp = new IntWritable();
+
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            String[] fields = value.toString().split(",");
+            year.set(fields[0]);
+            temp.set(Integer.parseInt(fields[1]));
+            context.write(year, temp);
+        }
+    }
+
+    public static class TempReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+        IntWritable minTemp = new IntWritable();
+
+        public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+            int min = Integer.MAX_VALUE;
+            for (IntWritable val : values) {
+                min = Math.min(min, val.get());
+            }
+            minTemp.set(min);
+            context.write(key, minTemp);
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "min temperature");
+        job.setJarByClass(MinTemperature.class);
+        job.setMapperClass(TempMapper.class);
+        job.setReducerClass(TempReducer.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(IntWritable.class);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
+
+
+
+QUE:-3
+Develop a MapReduce job that will split each line of the input text file in to tokens and then find the average count of all the tokens in the input file. The input text file should be available on the HDFS.
+
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+import java.util.StringTokenizer;
+
+public class TokenAverage {
+
+    public static class TokenizerMapper extends Mapper<Object, Text, Text, IntWritable> {
+        IntWritable one = new IntWritable(1);
+        Text word = new Text();
+
+        public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
+            StringTokenizer itr = new StringTokenizer(value.toString());
+            while (itr.hasMoreTokens()) {
+                word.set(itr.nextToken());
+                context.write(word, one);
+            }
+        }
+    }
+
+    public static class IntSumReducer extends Reducer<Text, IntWritable, Text, Text> {
+        int totalTokens = 0;
+        int totalOccurrences = 0;
+
+        public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+            int sum = 0;
+            for (IntWritable val : values) {
+                sum += val.get();
+            }
+
+            totalTokens++;
+            totalOccurrences += sum;
+
+            context.write(key, new Text(Integer.toString(sum)));
+        }
+
+        public void close(Context context) throws IOException, InterruptedException {
+            if (totalTokens > 0) {
+                float average = (float) totalOccurrences / totalTokens;
+                context.write(new Text("AverageCount"), new Text(Float.toString(average)));
+            }
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "token average count");
+        job.setJarByClass(TokenAverage.class);
+        job.setMapperClass(TokenizerMapper.class);
+        job.setReducerClass(IntSumReducer.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(Text.class);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
+
+
+
+QUE:4
+Develop a MapReduce job that will take text file input and will produce the output: (1) Count of the total token having length greater than or equal to four characters.
+
+
+
+
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+import java.util.StringTokenizer;
+
+public class TokenCount {
+
+    public class TokenMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+        IntWritable one = new IntWritable(1);
+        Text wordLengthKey = new Text("Token Count");
+
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            String line = value.toString();
+            StringTokenizer tokenizer = new StringTokenizer(line);
+
+            while (tokenizer.hasMoreTokens()) {
+                String token = tokenizer.nextToken();
+                if (token.length() >= 4) {
+                    context.write(wordLengthKey, one);  
+                }
+            }
+        }
+    }
+
+    public class TokenReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+        IntWritable result = new IntWritable();
+
+        public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+            int sum = 0;
+            for (IntWritable val : values) {
+                sum += val.get();
+            }
+            result.set(sum);
+            context.write(new Text("Total count for tokens ="), result);
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "Token Count");
+        job.setJarByClass(TokenCount.class);
+        job.setMapperClass(TokenCount.TokenMapper.class);
+        job.setReducerClass(TokenCount.TokenReducer.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(IntWritable.class);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
+
+
+
+
+QUE:-5
+Develop a MapReduce job that will count the total number of females voters in the record file Voters.txt. The input text file should be available on the HDFS. The file must have fields : ID,NAME,GENDER,AGE.
+
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+
+public class FemaleVoterCount {
+
+    public class VoterMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+        IntWritable one = new IntWritable(1);
+        Text femaleKey = new Text("Female Voters");
+
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            String line = value.toString();
+            String[] fields = line.split(","); 
+            
+            if (fields.length >= 4) { // Ensure there are enough fields (ID, NAME, GENDER, AGE)
+                String gender = fields[2].trim(); 
+                
+                if (gender.equalsIgnoreCase("Female")) { 
+                    context.write(femaleKey, one); 
+                }
+            }
+        }
+    }
+
+    public class VoterReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+        IntWritable result = new IntWritable();
+
+        public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+            int sum = 0;
+            for (IntWritable val : values) {
+                sum += val.get(); 
+            }
+            result.set(sum);
+            context.write(new Text("No. of female voters are :"), result);
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "Female Voter Count");
+        job.setJarByClass(FemaleVoterCount.class);
+        job.setMapperClass(FemaleVoterCount.VoterMapper.class);
+        job.setReducerClass(FemaleVoterCount.VoterReducer.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(IntWritable.class);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
+
+
+
+
+
+QUE:-6
+Develop a MapReduce job that will count the number of reviews given by each unique user for the Musical Instruments. The file should be available on HDFS. Its availabe on Moodle (Musical_instruments_reviews.csv).
+
+
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+
+public class ReviewCount {
+
+    public static class ReviewMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+        IntWritable one = new IntWritable(1);
+        Text userId = new Text();
+
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            String line = value.toString();
+            String[] fields = line.split(","); 
+            
+            if (fields.length >= 2) {
+                userId.set(fields[0].trim()); 
+                context.write(userId, one); 
+            }
+        }
+    }
+
+    public static class ReviewReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+        IntWritable result = new IntWritable();
+
+        public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+            int sum = 0;
+            for (IntWritable val : values) {
+                sum += val.get(); 
+            }
+            result.set(sum);
+            context.write(key, result); 
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "Review Count");
+        job.setJarByClass(ReviewCount.class);
+        job.setMapperClass(ReviewMapper.class);
+        job.setReducerClass(ReviewReducer.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(IntWritable.class);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
+
+
+
+
+QUE:7
+Perform the following on the movies.csv dataset 
+
+QUE:-7.1
+Write a mapreduce job to display all the details of the comedy movies.
+
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+
+public class ComedyMovies {
+
+    public static class ComedyMapper extends Mapper<LongWritable, Text, Text, Text> {
+        Text outputKey = new Text();
+        Text outputValue = new Text();
+
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            String line = value.toString();
+            String[] fields = line.split(","); 
+
+            if (fields.length >= 3) { 
+                if (fields[2].contains("Comedy")) { 
+                    outputKey.set(fields[0]); 
+                    outputValue.set(line); 
+                    context.write(outputKey, outputValue); 
+                }
+            }
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "Comedy Movies");
+        job.setJarByClass(ComedyMovies.class);
+        job.setMapperClass(ComedyMapper.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(Text.class);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
+
+
+
+
+QUE:-7.2
+Write a mapreduce job to find the count of the Documentary movies released in the year 1995.
+
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+
+public class DocumentaryCount {
+
+    public static class Mapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+        IntWritable one = new IntWritable(1);
+        Text documentaryKey = new Text("Documentary Count");
+
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            String line = value.toString();
+            String[] fields = line.split(","); 
+
+            if (fields.length >= 3) { 
+                String title = fields[1];
+                String genres = fields[2];
+                if (genres.contains("Documentary") && line.contains("1995")) { 
+                    context.write(documentaryKey, one);
+                }
+            }
+        }
+    }
+
+    public static class Reducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+        IntWritable result = new IntWritable();
+
+        public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+            int sum = 0;
+            for (IntWritable val : values) {
+                sum += val.get();
+            }
+            result.set(sum);
+            context.write(key, result); 
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "Documentary Count");
+        job.setJarByClass(DocumentaryCount.class);
+        job.setMapperClass(DocumentaryMapper.class);
+        job.setReducerClass(DocumentaryReducer.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(IntWritable.class);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
+
+
+
+
+QUE:-7.3
+Write a mapreduce job that will count the total number of missing records where ‘genres’ are missing. (Note: Remove genre from few records before processing.)
+
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+
+public class MissingGenresCount {
+
+    public static class MissingGenresMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+        IntWritable one = new IntWritable(1);
+        Text missingGenresKey = new Text("Missing Genres Count");
+
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            String line = value.toString();
+            String[] fields = line.split(","); 
+            if (fields.length < 3 || fields[2].isEmpty()) { 
+                context.write(missingGenresKey, one);
+            }
+        }
+    }
+
+    public static class MissingGenresReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+        IntWritable result = new IntWritable();
+
+        public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+            int sum = 0;
+            for (IntWritable val : values) {
+                sum += val.get();
+            }
+            result.set(sum);
+            context.write(key, result); 
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "Missing Genres Count");
+        job.setJarByClass(MissingGenresCount.class);
+        job.setMapperClass(MissingGenresMapper.class);
+        job.setReducerClass(MissingGenresReducer.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(IntWritable.class);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
+
+
+
+
+QUE:-7.4
+Write a mapreduce job to display only titles of the movie having “Gold” anywhere in the title.
+
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+
+public class GoldTitleMovies {
+
+    public static class GoldTitleMapper extends Mapper<LongWritable, Text, Text, Text> {
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            String line = value.toString();
+            String[] fields = line.split(","); 
+
+            if (fields.length >= 2) { 
+                String title = fields[1];
+                if (title.contains("Gold")) {
+                    context.write(new Text(title), null); 
+                }
+            }
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "Gold Title Movies");
+        job.setJarByClass(GoldTitleMovies.class);
+        job.setMapperClass(GoldTitleMapper.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(Text.class);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
+
+
+
+
+
+QUE:-7.5
+Write a mapreduce that will display the count of the movies which belongs to both Drama and Romantic genre.
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+import java.io.IOException;
+
+public class DramaRomanticMoviesCount {
+
+    public static class GenreMapper extends Mapper<LongWritable, Text, Text, LongWritable> {
+        LongWritable one = new LongWritable(1);
+        Text genreKey = new Text("Drama-Romantic Count");
+
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            String line = value.toString();
+            String[] fields = line.split(",");
+            if (fields.length >= 3) {
+                String genres = fields[2];
+                if (genres.contains("Drama") && genres.contains("Romantic")) {
+                    context.write(genreKey, one);
+                }
+            }
+        }
+    }
+
+    public static class GenreReducer extends Reducer<Text, LongWritable, Text, LongWritable> {
+        LongWritable result = new LongWritable();
+
+        public void reduce(Text key, Iterable<LongWritable> values, Context context) throws IOException, InterruptedException {
+            long sum = 0;
+            for (LongWritable val : values) {
+                sum += val.get();
+            }
+            result.set(sum);
+            context.write(key, result);
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "Drama Romantic Movies Count");
+        job.setJarByClass(DramaRomanticMoviesCount.class);
+        job.setMapperClass(GenreMapper.class);
+        job.setReducerClass(GenreReducer.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(LongWritable.class);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
